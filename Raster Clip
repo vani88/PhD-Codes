@@ -1,0 +1,34 @@
+Python
+# Import libraries
+from osgeo import gdal
+import geopandas as gpd
+
+# Define file paths (replace with actual paths)
+raster_path = "path/to/your/raster.tif"
+vector_path = "path/to/your/boundary.shp"
+
+# Open the raster dataset
+raster_dataset = gdal.Open(raster_path)
+
+# Read the GeoDataFrame defining the clip boundary
+boundary = gpd.read_file(vector_path)
+
+# Get the geometry from the GeoDataFrame
+geometry = boundary.geometry.iloc[0]  # Assuming you want to clip based on the first feature
+
+# Clip the raster using the geometry
+clipped_data, clipped_geotransform = gdal.RasterIO(
+    gdal.GDT_Float32,  # Data type of output (adjust if needed)
+    raster_dataset.GetRasterBand(1),  # Assuming band 1 for clipping
+    srcWin=[0, 0, raster_dataset.RasterXSize, raster_dataset.RasterYSize],  # Window to clip
+    dstWin=geometry.bounds,  # Clip extent based on geometry bounds
+    geoTransform=raster_dataset.GetGeoTransform(),
+    srcProj=raster_dataset.GetProjection(),
+    dstProj=raster_dataset.GetProjection(),
+)
+
+# (Optional) Create a new GeoTIFF file with the clipped data
+# ... (logic to create and save the clipped raster) 
+
+# Close the raster dataset
+raster_dataset = None
