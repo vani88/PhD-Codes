@@ -1,0 +1,193 @@
+from netCDF4 import Dataset
+import csv
+import os
+import datetime
+
+dir = input("Enter the Directory path, where all the netcdf files are stored:\n")
+dir = dir.replace('\\','/')
+#dir = "C:/Users/shara/Desktop/mam"
+os.mkdir(dir+'/outputs')
+output_dir = dir+'/outputs'
+
+# Reading the grid points
+grids = input('Enter the location of grid points list file:\n')
+grids = grids.replace('\\','/')
+grids = open(grids,'r')
+grids = csv.reader(grids, delimiter = '\t')
+grids = list(grids)
+#max = len(grids)-1
+#min = 1
+# lat are in grids[x][1] x is from 1 to
+# lon are in grids[x][2]
+
+# Getting file names
+pr_files = []
+max_files = []
+
+min_files = []
+variable = ''
+for a in os.listdir(dir):
+    if a.endswith('.nc'):
+        if a.startswith('pr'):
+            pr_files.append(a)
+        elif a.startswith('tasmax'):
+            max_files.append(a)
+        elif a.startswith('tasmin'):
+            min_files.append(a)
+
+
+for i in range(len(pr_files)):
+    # Opening netcdf files according to their year
+    pr_nc = Dataset(dir+'/'+pr_files[i],'r')
+    max_nc = Dataset(dir+'/'+max_files[i],'r')
+    min_nc = Dataset(dir+'/'+min_files[i],'r')
+    '''print('\n\nPr')
+    for j in pr_nc.variables:
+        print(j, pr_nc.variables[j].units, pr_nc.variables[j].shape)
+    print('\n\nMax')
+    for j in max_nc.variables:
+        print(j, max_nc.variables[j].units, max_nc.variables[j].shape)
+    print('\n\nMin')
+    for j in min_nc.variables:
+        print(j, min_nc.variables[j].units, min_nc.variables[j].shape)'''
+    '''precip = pr_nc.variables['pr'][:, :, :]
+    tasmax = max_nc.variables['tasmax'][:, :, :]
+    tasmin = min_nc.variables['tasmin'][:, :, :]
+    #print(precip)'''
+
+    time = list(pr_nc.variables['time'][:])
+    # only for gregorian calender dates
+    for k in range(len(time)):
+        time[k] = datetime.datetime(1,1,1) + datetime.timedelta(int(time[k]))
+        time[k] = time[k].date()
+    start_date = time[0]
+
+    if i==0:
+        first_year = start_date.strftime('%Y')
+
+    for j in range(1,len(grids)):
+        lat = grids[j][1]
+        lon = grids[j][2]
+        l_index = list(pr_nc.variables['lat'][:]).index(float(lat))
+        m_index = list(pr_nc.variables['lon'][:]).index(float(lon))
+        #print(str(l_index)+' '+str(m_index))
+
+        # Creating and opening files
+        datedat = open(output_dir+'/WS'+first_year+'to'+lat+'_'+lon+'datedat.txt','a')
+        pcp = open(output_dir+'/WS'+first_year+'to'+lat+'_'+lon+'pcp.txt', 'a')
+        t = open(output_dir+'/WS'+first_year+'to'+lat+'_'+lon+'temp.txt', 'a')
+
+        # Write only if file doesn't exist
+        if i==0:
+            # First line for each file
+            datedat.write('DATE,YEAR,MONTH,DAY,MaxTemp(C),MinTemp(C),Precipitation(mm)\n')
+            pcp.write(start_date.strftime('%Y%m%d')+'\n')
+            t.write(start_date.strftime('%Y%m%d')+'\n')
+
+        # for precipitation
+        precip=[]
+        for a in pr_nc.variables['pr'][:, l_index:l_index+1, m_index:m_index+1]:
+            for b in a:
+                for c in b:
+                    # To convert from Kg m-2 s-1 to mm
+                    c = c * 86400
+                    # To round it to two decimal places
+                    c = round(c,2)
+                    precip.append(str(c))
+        # for min temp
+        tasmin = []
+        for a in min_nc.variables['tasmin'][:, l_index:l_index+1, m_index:m_index+1]:
+            for b in a:
+                for c in b:
+                    # To convert from Kelvin to centigrade
+                    c = c - 273.15
+                    # To round it to two decimal places
+                    c = round(c, 2)
+                    tasmin.append(str(c))
+        # for max temp
+        tasmax = []
+        for a in max_nc.variables['tasmax'][:, l_index:l_index+1, m_index:m_index+1]:
+            for b in a:
+                for c in b:
+                    # To convert from Kelvin to centigrade
+                    c = c-273.15
+                    # To round it to two decimal places
+                    c = round(c, 2)
+                    tasmax.append(str(c))
+
+        # Writing into files
+        for k in range(len(time)):
+            date = time[k].strftime('%Y-%m-%d')
+            year = time[k].strftime('%Y')
+            month = time[k].strftime('%m')
+            day = time[k].strftime('%d')
+
+            datedat.write(date+','+year+','+month+','+day+','+tasmax[k]+','+tasmin[k]+','+precip[k]+'\n')
+            pcp.write(precip[k]+'\n')
+            t.write(tasmax[k]+','+tasmin[k]+'\n')
+
+        # To print percentage
+        print("\r...{:.2f}% of {} year completed".format(float((j+1) / len(grids))*100, int(first_year)+i), end = "")
+
+        # Closing the files
+        datedat.close()
+        pcp.close()
+        t.close()
+
+    # Printing Progress bar
+    print("\n{} of {} years completed.".format(i+1, len(pr_files)))
+
+# Creating file lists
+print("\nCreating file lists.")
+datedat_list = open(output_dir+'/Date_Data_list.txt','w')
+pcp_list = open(output_dir+'/PCP_file_list.txt','w')
+temp_list = open(output_dir+'/Temp_list.txt','w')
+
+# writing files in to the file lists
+for a in os.listdir(output_dir):
+    if a.endswith('datedat.txt'):
+        datedat_list.write(a+'\n')
+    elif a.endswith('pcp.txt'):
+        pcp_list.write(a+'\n')
+    elif a.endswith('temp.txt'):
+        temp_list.write(a+'\n')
+
+# Closing file lists
+datedat_list.close()
+pcp_list.close()
+temp_list.close()
+'''lat = list(nc.variables['lat'][:])
+print(lat)
+#lat[lat.index(17.125)]
+
+print(lat[68:75])
+req_lat = lat[68:75]
+print('\n\n\n')
+
+long = nc.variables['lon'][:]
+print(long[74:84])
+req_long = long[74:84]
+
+req_precip = nc.variables['pr'][:, 68:75, 74:84]
+l=68
+m=74
+for i in req_lat:
+    for j in req_long:
+        with open("./new/"+str(i)+str(j)+'.txt','w') as f:
+            for a in nc.variables['pr'][:, l:l+1, m:m+1]:
+                for b in a:
+                    for c in b:
+                        f.write(str(c)+'\n')
+        m+=1
+    l+=1
+
+print(nc.variables['time'][0:25])
+print(nc.variables['lat'][68:75])
+
+import datetime
+first = datetime.datetime(1,1,1)
+now = datetime.datetime(1991,1,1)
+print((now-first).days)'''
+'''for i in nc.variables['time']:
+    with open('./dates.txt','w') as f:
+        f.write(str(nc.variables['time'])+'\n  ')'''
