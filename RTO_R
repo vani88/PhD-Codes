@@ -1,0 +1,36 @@
+# Load time series data for inflows and demands
+inflows <- ts(c(100, 150, 200, 250, 300), frequency = 1)
+demands <- ts(c(200, 225, 250, 275, 300), frequency = 1)
+
+# Set up initial conditions
+reservoir_capacity <- 10000 # acre-feet
+reservoir_level <- 5000 # acre-feet
+release <- 0 # acre-feet/day
+
+# Define function to calculate objective function (in this case, minimize squared error between demand and supply)
+objective_function <- function(release, demand, inflow) {
+  supply <- reservoir_level + inflow - release
+  return((supply - demand)^2)
+}
+
+# Run real-time optimization loop
+for (i in 1:length(inflows)) {
+  # Get current inflow and demand
+  inflow <- inflows[i]
+  demand <- demands[i]
+  
+  # Calculate release rate based on current reservoir level and inflow
+  release <- optimize(objective_function, interval=c(0, inflow), demand=demand, inflow=inflow)$minimum
+  
+  # Update reservoir level based on current conditions
+  reservoir_level <- reservoir_level + inflow - release
+  
+  # Print current conditions
+  cat("Time:", time(inflows)[i], "\n")
+  cat("Reservoir level:", reservoir_level, "acre-feet\n")
+  cat("Release rate:", release, "acre-feet/day\n")
+  cat("\n")
+  
+  # Wait for next iteration (in a real-world implementation, this would be based on a specific time interval)
+  Sys.sleep(1)
+}
