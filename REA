@@ -1,0 +1,38 @@
+library(readxl)
+
+# read input files
+inwt <- read_excel("input.xlsx", sheet = "initial weights")
+cdfs <- read_excel("input.xlsx", sheet = "cdfs")
+
+final_weights <- matrix(nrow = 9, ncol = 21)
+
+zz <- 1
+zzz <- 1
+
+for (j in 1:9) {
+  wttr <- matrix(nrow = 2, ncol = 21)
+  wttr[1, ] <- inwt[3, zz:(zz + 20)]
+  wttr[2, ] <- wttr[1, ]
+  wtx <- matrix(nrow = 1, ncol = 21)
+  k <- 1
+  
+  while (any(abs(wttr[k, ] - wtx) > 0.0001)) {
+    wtcdf <- matrix(nrow = 11, ncol = 22)
+    for (i in 1:21) {
+      wtcdf[, i] <- cdfs[, zzz + i] * wttr[k + 1, i]  # multiply weights
+    }
+    for (i in 1:11) {
+      wtcdf[i, 22] <- sum(wtcdf[i, 1:21])  #weighted cdf
+    }
+    RMSE <- sqrt(colMeans((wtcdf[, 22] - cdfs[, zzz:(zzz + 20)])^2))  #rmse of all model
+    k <- k + 1
+    wtx <- (1 / RMSE) / sum(1 / RMSE)  # calculated new weights
+    wttr[k + 1, ] <- (wttr[k, ] + wtx) / 2  # average weights
+  }
+  
+  final_weights[j, ] <- wttr[k, ]
+  zz <- zz + 25
+  zzz <- zzz + 23
+}
+
+check <- rowSums(final_weights)
