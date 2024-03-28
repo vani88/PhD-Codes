@@ -1,0 +1,37 @@
+library(readxl) # for reading data from Excel files
+library(dplyr) # for data manipulation and filtering
+library(caret) # for creating training and testing datasets
+library(car) # for performing diagnostics and checking assumptions
+library(Metrics) # for evaluating model performance
+
+# Load data
+gauged_data <- read_excel("gauged_data.xlsx") # replace with your data file name
+ungauged_data <- read_excel("ungauged_data.xlsx") # replace with your data file name
+
+# Subset relevant variables
+gauged_data_subset <- select(gauged_data, drainage_area, mean_slope, precipitation, streamflow)
+ungauged_data_subset <- select(ungauged_data, drainage_area, mean_slope, precipitation)
+
+# Create training and testing datasets
+set.seed(123) # for reproducibility
+trainIndex <- createDataPartition(gauged_data_subset$streamflow, p = .8, list = FALSE)
+training_data <- gauged_data_subset[trainIndex, ]
+testing_data <- gauged_data_subset[-trainIndex, ]
+
+# Fit multiple linear regression model
+model <- lm(streamflow ~ drainage_area + mean_slope + precipitation, data = training_data)
+
+# Check assumptions and diagnostics
+plot(model)
+qqPlot(model, main = "Normal Q-Q Plot")
+hist(model$residuals, main = "Histogram of Residuals")
+shapiro.test(model$residuals)
+influenceIndexPlot(model, id.method = "mahal")
+vif(model)
+
+# Predict streamflow in ungauged basin
+ungauged_data$predicted_streamflow <- predict(model, ungauged_data_subset)
+
+# Evaluate model performance
+RMSE(ungauged_data$predicted_streamflow, ungauged_data$observed_streamflow)
+MAE(ungauged_data$predicted_streamflow, ungauged_data$observed_streamflow)
