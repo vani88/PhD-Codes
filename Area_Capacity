@@ -1,0 +1,10 @@
+install.packages("ggplot2")
+library(ggplot2)
+#Create a data frame with your "Area" and "Capacity" data:
+ac<- read.csv("E:/PhD Final/Thesis_Docs/New Figures/area_cap.csv", header = F, skip=1)
+df <- data.frame(Area = ac$V1, Capacity = ac$V2)
+#Create a scatter plot with a trendline:
+ ggplot(df, aes(x = Area, y = Capacity)) +
+  #geom_point() +
+  geom_smooth(method = "gam", se = FALSE)+
+   labs(x = "Water Spread Area (ha)", y="Capacity(MCM)")
