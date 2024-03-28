@@ -1,0 +1,36 @@
+# Import libraries
+import geopandas as gpd
+from osgeo import gdal
+
+# Define file path (replace with your actual file path)
+filepath = "path/to/your/satellite_image.tif"
+
+# Open the raster dataset using GDAL
+dataset = gdal.Open(filepath)
+
+# Get information about the dataset
+rows = dataset.RasterYSize
+cols = dataset.RasterXSize
+bands = dataset.RasterCount
+
+# Read a specific band as a NumPy array
+band_data = dataset.GetRasterBand(1).ReadAsArray()  # Assuming band 1 is your data band
+
+# Create a GeoDataFrame with basic geometry from raster extent
+geometry = gpd.geometry.box(dataset.GetGeoTransform()[0],
+                             dataset.GetGeoTransform()[3],
+                             dataset.GetGeoTransform()[0] + cols * dataset.GetGeoTransform()[1],
+                             dataset.GetGeoTransform()[3] + rows * dataset.GetGeoTransform()[5])
+crs = dataset.GetProjection()  # Get coordinate reference system
+
+# Create a GeoDataFrame with the data band and geometry
+gdf = gpd.GeoDataFrame({"data": band_data.flatten()}, crs=crs, geometry=[geometry])
+
+# Process the data further using GeoPandas functionalities (e.g., masking, calculations)
+# ... (your specific data processing logic here)
+
+# (Optional) Export the GeoDataFrame to a shapefile
+gdf.to_file("processed_data.shp", driver="ESRI Shapefile")
+
+# Close the GDAL dataset
+dataset = None
