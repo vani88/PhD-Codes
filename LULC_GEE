@@ -1,0 +1,31 @@
+# Import libraries
+import ee
+
+# Initialize Earth Engine
+ee.Initialize()
+
+# Define region of interest
+roi = ee.Geometry.Point([-122.37, 37.62])  # Example point, replace with your area
+
+# Select Landsat imagery
+images = ee.ImageCollection("LANDSAT/LC08/C01/T1_SR") \
+    .filterDate("2020-01-01", "2020-12-31") \
+    .filterBounds(roi)
+
+# Define features (replace with your feature engineering logic)
+ndvi = images.map(lambda img: img.normalizedDifference(['B5', 'B4']))
+
+# Train a random forest classifier
+classifier = ee.Classifier.randomForest().train(ndvi, ee.FeatureCollection([
+    ee.Feature(ndvi.select(0), {'landcover': 0}),  # Example labeled features
+    ee.Feature(ndvi.select(0), {'landcover': 1})
+]))
+
+# Classify the imagery
+classification = classifier.classify(ndvi)
+
+# Export results (replace with desired format and location)
+classification.exportMap('landcover_map', scale=30)
+
+# Print completion message
+print("Classification complete!")
