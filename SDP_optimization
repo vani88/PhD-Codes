@@ -1,0 +1,30 @@
+##import libraries
+library(reservoir)
+##import historic inflow time series data
+x<-read.csv("hist_inflow.csv")
+##Water Demand time series data is given as target
+y<-read.csv("targetrelease_hist.csv", header=T)
+## future inflow time series data
+z<-read.csv("inflow_cr45.csv")
+##future water demand time series
+zr<-read.csv("targetrelease_fcr45.csv")
+#3 Reservoir metrics
+Q<-ts(x$Capacity, start=c(2003,1), frequency=12) 
+Q_f<-ts(z$CR45, start = c(2025,1), frequency = 12)
+t_f<-ts(zr$CR45,start = c(2025,1), frequency = 12 )
+res_cap <- 95.6 #Mm3
+targ <- ts(y$target, start=c(2003,1), frequency=12) #Mm3
+
+area <- 0.0023954119834 #km2
+max_d <- 10 #m
+ev = 0.2 #m
+## reservoir Simulation
+s<-simRes(Q, capacity = res_cap, target = targ, surface_area = area, max_depth = max_d, evap = ev, S_initial=0.24)
+s<-simRes(Q, capacity = res_cap, target = targ, surface_area = area, max_depth = max_d, evap = ev, S_initial=0.24)
+write.csv(s$releases, "Hist_simres.csv", quote = F)
+##Optimization
+policy_x <- sdp_supply(Q, capacity = res_cap, target = 0.9*6.9, surface_area = area, max_depth = max_d, evap = ev, S_disc = 1000, S_initial=0.24,Markov = TRUE, rep_rrv = T)
+
+dp<- simRes(Q_f, capacity = res_cap, target = t_f, surface_area = area, max_depth = max_d, evap = ev,S_initial= 0.44, policy = policy_x)
+policy_x <- sdp_supply(Q_f, capacity = res_cap, target = 0.9*6.9, surface_area = area, max_depth = max_d, evap = ev, plot =T, S_disc = 1000, S_initial=0.44,Markov = TRUE, rep_rrv = T)
+rrv(sdp$releases,t_f)
